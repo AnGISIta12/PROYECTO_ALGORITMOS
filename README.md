@@ -1,8 +1,8 @@
-# 🎮 Shikaku Game
+# Shikaku Game
 
 Un juego interactivo del puzzle **Shikaku** desarrollado en Python con Pygame. Incluye un solucionador automático usando algoritmos de backtracking.
 
-## 📖 Descripción
+## Descripción
 
 Shikaku es un puzzle que desafía tu lógica y habilidades de resolución de problemas. El objetivo es dividir una grilla en rectángulos siguiendo reglas específicas.
 
@@ -13,7 +13,7 @@ Shikaku es un puzzle que desafía tu lógica y habilidades de resolución de pro
 
 Ejemplo: Un número 6 podría ser un rectángulo de 2×3 o 3×2.
 
-## 🎯 Controles
+##  Controles
 
 | Acción | Descripción |
 |--------|-------------|
@@ -23,7 +23,7 @@ Ejemplo: Un número 6 podría ser un rectángulo de 2×3 o 3×2.
 | **Botón "Limpiar"** | Borra todos los rectángulos dibujados |
 | **Botón "Siguiente ▶"** | Carga un puzzle diferente |
 
-## 📋 Características
+##  Características
 
 ✅ **Interfaz gráfica intuitiva** con Pygame  
 ✅ **3 puzzles predefinidos** (fácil 5×5, medio 6×6, difícil 7×7)  
@@ -32,7 +32,7 @@ Ejemplo: Un número 6 podría ser un rectángulo de 2×3 o 3×2.
 ✅ **Colores distintivos** para cada rectángulo dibujado  
 ✅ **Mensajes de feedback** sobre el estado del puzzle  
 
-## 🛠️ Instalación
+##  Instalación
 
 ### Requisitos
 - Python 3.7 o superior
@@ -75,7 +75,7 @@ shikaku-game/
 └── .gitignore      # (Opcional) Archivos ignorados por Git
 ```
 
-## 🎮 Ejemplo de Uso
+##  Ejemplo de Uso
 
 1. Ejecuta el programa
 2. Se cargará un puzzle predefinido
@@ -110,10 +110,4 @@ pip install --upgrade pygame
 - Cierra otras aplicaciones pesadas
 - Reduce la resolución si es necesario
 
-## 📞 Soporte
-
-Si encuentras problemas, abre un issue o contacta a los autores.
-
----
-
-**¡Disfruta resolviendo puzzles!** 🎯✨
+**¡Disfruta resolviendo puzzles!**
