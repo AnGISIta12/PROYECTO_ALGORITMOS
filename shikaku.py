@@ -2,54 +2,42 @@
 Shikaku - Proyecto Análisis de Algoritmos 2026-10
 Vanesa Florez y Angy Bautista
 
-Cómo jugar:
-  - Clic izquierdo: empieza a dibujar un rectángulo desde una celda
-  - Clic derecho: borra el rectángulo de esa celda
-  - Botón "Resolver": el algoritmo resuelve el puzzle automáticamente
-  - Botón "Nuevo puzzle": carga un puzzle distinto
-  - Botón "Limpiar": borra todos los rectángulos dibujados
-
-Reglas del Shikaku:
-  - Divide la grilla en rectángulos
-  - Cada rectángulo debe contener exactamente UN número
-  - Ese número indica el área exacta del rectángulo (filas x columnas)
+Correcciones: Orden de capas de dibujo (los rectángulos ya se ven) y 
+redimensión de pantalla para evitar cortes abajo.
 """
 
 import pygame
 import sys
 import random
 from copy import deepcopy
+import math
 
-# ── Colores ──────────────────────────────────────────────────────────────────
-BLANCO      = (255, 255, 255)
-NEGRO       = (  0,   0,   0)
-GRIS_CLARO  = (220, 220, 220)
-GRIS        = (160, 160, 160)
-AZUL        = ( 70, 130, 200)
-AZUL_CLARO  = (180, 210, 255)
-VERDE       = ( 60, 180,  80)
-ROJO        = (220,  60,  60)
-AMARILLO    = (255, 230,  80)
-NARANJA     = (255, 150,  50)
+# ── PALETA DE COLORES ────────────────────────────────────────────────────────
+FONDOS_GRADIENTE = [(240, 244, 248), (218, 226, 236)] 
+GRILLA_FONDO     = (255, 255, 255)
+GRILLA_LINEA     = (186, 199, 213)
+TEXTO_PRINCIPAL  = (16, 42, 67)
+TEXTO_SECUNDARIO = (72, 101, 129)
+
+BTN_RESOLVER  = {"normal": (36, 150, 63),   "hover": (46, 175, 76),   "texto": (255, 255, 255)}
+BTN_LIMPIAR   = {"normal": (211, 47, 47),   "hover": (229, 57, 53),   "texto": (255, 255, 255)}
+BTN_SIGUIENTE = {"normal": (33, 150, 243),  "hover": (66, 165, 245),  "texto": (255, 255, 255)}
+
 COLORES_RECT = [
-    (173, 216, 230),  # azul claro
-    (144, 238, 144),  # verde claro
-    (255, 182, 193),  # rosa
-    (255, 255, 153),  # amarillo
-    (216, 191, 216),  # lavanda
-    (255, 200, 150),  # durazno
-    (180, 230, 180),  # menta
-    (200, 200, 255),  # lila
-    (255, 220, 180),  # melocotón
-    (180, 255, 255),  # cian claro
+    (139, 218, 242),  # Azul pastel
+    (163, 230, 177),  # Verde menta
+    (255, 179, 186),  # Melón suave
+    (255, 223, 186),  # Durazno
+    (255, 255, 186),  # Amarillo crema
+    (225, 190, 231),  # Lavanda
+    (178, 235, 242),  # Turquesa claro
+    (255, 204, 188),  # Coral suave
 ]
 
-# ── Puzzles predefinidos ──────────────────────────────────────────────────────
-# Formato: lista de (fila, columna, número)  →  grilla NxN
+# ── PUZZLES ──────────────────────────────────────────────────────────────────
 PUZZLES = [
-    # Puzzle 1 – 5x5 fácil (solución verificada)
     {
-        "nombre": "Fácil 5×5",
+        "nombre": "Principiante 5×5",
         "filas": 5, "cols": 5,
         "pistas": [
             (0,0,4),(0,3,3),
@@ -58,9 +46,8 @@ PUZZLES = [
             (3,2,4),(4,1,1),(4,4,1),
         ]
     },
-    # Puzzle 2 – 6x6 medio (solución verificada)
     {
-        "nombre": "Medio 6×6",
+        "nombre": "Intermedio 6×6",
         "filas": 6, "cols": 6,
         "pistas": [
             (0,1,3),(0,4,3),
@@ -69,9 +56,8 @@ PUZZLES = [
             (4,0,4),(4,2,4),(4,4,4),
         ]
     },
-    # Puzzle 3 – 7x7 difícil (solución verificada)
     {
-        "nombre": "Difícil 7×7",
+        "nombre": "Experto 7×7",
         "filas": 7, "cols": 7,
         "pistas": [
             (0,1,3),(0,3,4),(0,5,2),
@@ -83,352 +69,416 @@ PUZZLES = [
     },
 ]
 
-# ── Solucionador (Backtracking) ───────────────────────────────────────────────
+# ── LOGICA BACKTRACKING ───────────────────────────────────────────────────────
 def obtener_rectangulos_posibles(fila, col, num, filas, cols):
-    """Genera todos los rectángulos que tienen área=num y contienen la celda (fila,col)."""
     resultado = []
-    for h in range(1, filas + 1):
-        if num % h != 0:
-            continue
-        w = num // h
-        if w > cols:
-            continue
-        # El rectángulo puede empezar en distintas posiciones respecto a la pista
-        for r0 in range(max(0, fila - h + 1), min(filas - h, fila) + 1):
-            for c0 in range(max(0, col - w + 1), min(cols - w, col) + 1):
-                resultado.append((r0, c0, r0 + h - 1, c0 + w - 1))
+    try:
+        for h in range(1, filas + 1):
+            if num % h != 0: continue
+            w = num // h
+            if w > cols: continue
+            for r0 in range(max(0, fila - h + 1), min(filas - h, fila) + 1):
+                for c0 in range(max(0, col - w + 1), min(cols - w, col) + 1):
+                    resultado.append((r0, c0, r0 + h - 1, c0 + w - 1))
+    except Exception as e:
+        return []
     return resultado
-
 
 def celdas_de_rect(r0, c0, r1, c1):
     return [(r, c) for r in range(r0, r1 + 1) for c in range(c0, c1 + 1)]
 
-
 def resolver(pistas, filas, cols):
-    """
-    Backtracking: asigna un rectángulo a cada pista sin solapamientos.
-    Retorna lista de rectángulos (r0,c0,r1,c1) en el mismo orden que pistas,
-    o None si no hay solución.
-    """
-    # Pre-calcular opciones para cada pista
-    opciones = []
-    for (fila, col, num) in pistas:
-        ops = obtener_rectangulos_posibles(fila, col, num, filas, cols)
-        opciones.append(ops)
-
-    asignados = [None] * len(pistas)
-    ocupado = {}   # celda -> índice de pista
-
-    def backtrack(idx):
-        if idx == len(pistas):
-            return True
-        for rect in opciones[idx]:
-            celdas = celdas_de_rect(*rect)
-            # Verificar que no haya solapamiento
-            if any(c in ocupado for c in celdas):
-                continue
-            # Verificar que el rectángulo contenga exactamente una pista
-            pistas_en_rect = sum(
-                1 for (pr, pc, _) in pistas if rect[0] <= pr <= rect[2] and rect[1] <= pc <= rect[3]
-            )
-            if pistas_en_rect != 1:
-                continue
-            # Asignar
-            for c in celdas:
-                ocupado[c] = idx
-            asignados[idx] = rect
-            if backtrack(idx + 1):
-                return True
-            # Deshacer
-            for c in celdas:
-                del ocupado[c]
-            asignados[idx] = None
-        return False
-
-    if backtrack(0):
-        return asignados
+    try:
+        opciones = []
+        for (fila, col, num) in pistas:
+            ops = obtener_rectangulos_posibles(fila, col, num, filas, cols)
+            if not ops: return None
+            opciones.append(ops)
+        
+        asignados = [None] * len(pistas)
+        ocupado = {}
+        
+        def backtrack(idx):
+            if idx == len(pistas): return True
+            for rect in opciones[idx]:
+                celdas = celdas_de_rect(*rect)
+                if any(c in ocupado for c in celdas): continue
+                pistas_en_rect = sum(1 for (pr, pc, _) in pistas if rect[0] <= pr <= rect[2] and rect[1] <= pc <= rect[3])
+                if pistas_en_rect != 1: continue
+                for c in celdas: ocupado[c] = idx
+                asignados[idx] = rect
+                if backtrack(idx + 1): return True
+                for c in celdas: del ocupado[c]
+                asignados[idx] = None
+            return False
+        
+        if backtrack(0): return asignados
+    except Exception as e:
+        print(e)
     return None
 
+class EfectoVisual:
+    def __init__(self):
+        self.tooltips = {}
+        self.spinner_angle = 0
+        self.mensaje_timer = 0
+        self.mensaje_actual = ""
+        self.mensaje_color = TEXTO_PRINCIPAL
+    
+    def actualizar(self):
+        if self.mensaje_timer > 0:
+            self.mensaje_timer -= 1
+            if self.mensaje_timer == 0:
+                self.mensaje_actual = ""
+        self.spinner_angle = (self.spinner_angle + 10) % 360
 
-# ── Clase principal del juego ─────────────────────────────────────────────────
+# ── CLASE PRINCIPAL ──────────────────────────────────────────────────────────
 class Shikaku:
     def __init__(self):
         pygame.init()
-        self.ancho_pantalla = 700
-        self.alto_pantalla  = 680
+        # COMPACTACIÓN DE PANTALLA: Ideal para que no tome todo el alto vertical
+        self.ancho_pantalla = 800
+        self.alto_pantalla  = 660  
         self.pantalla = pygame.display.set_mode((self.ancho_pantalla, self.alto_pantalla))
-        pygame.display.set_caption("Shikaku – Análisis de Algoritmos 2026")
-
-        self.fuente_grande = pygame.font.SysFont("Arial", 28, bold=True)
-        self.fuente_media  = pygame.font.SysFont("Arial", 20, bold=True)
-        self.fuente_chica  = pygame.font.SysFont("Arial", 14)
-
+        pygame.display.set_caption("Shikaku Puzzle – UI Premium")
+        
+        self.fuente_titulo = pygame.font.SysFont("Segoe UI", 30, bold=True)
+        self.fuente_sub    = pygame.font.SysFont("Segoe UI", 14, bold=False)
+        self.fuente_pistas = pygame.font.SysFont("Segoe UI", 20, bold=True)
+        self.fuente_botones= pygame.font.SysFont("Segoe UI", 15, bold=True)
+        
+        self.efectos = EfectoVisual()
         self.puzzle_idx = 0
         self.cargar_puzzle(self.puzzle_idx)
-
-        self.dibujando   = False   # ¿el usuario está arrastrando?
+        
+        self.dibujando   = False
         self.celda_inicio = None
         self.celda_actual = None
-        self.mensaje      = ""
-        self.color_msg    = NEGRO
-
+        self.resolviendo = False
+        self.hover_rect = None
+        
     def cargar_puzzle(self, idx):
         p = PUZZLES[idx]
         self.filas     = p["filas"]
         self.cols      = p["cols"]
-        self.pistas    = p["pistas"]   # lista (fila, col, num)
+        self.pistas    = p["pistas"]
         self.nombre    = p["nombre"]
-        # Mapa rápido celda → número
         self.mapa_pistas = {(f, c): n for (f, c, n) in self.pistas}
-        # Rectángulos del usuario: lista de (r0,c0,r1,c1)
         self.rects_usuario = []
         self.resuelto = False
         self._calcular_geometria()
-
+        self.mostrar_mensaje(f"Modo: {self.nombre}", TEXTO_PRINCIPAL, 120)
+    
     def _calcular_geometria(self):
+        # Ajuste de márgenes para subir la grilla y dejar aire abajo
         margen_top  = 110
-        margen_izq  = 40
-        espacio_bot = 100
-        ancho_grid  = self.ancho_pantalla - margen_izq * 2
-        alto_grid   = self.alto_pantalla  - margen_top - espacio_bot
-        self.tam_celda = min(ancho_grid // self.cols, alto_grid // self.filas)
-        self.grid_x = margen_izq + (ancho_grid - self.tam_celda * self.cols) // 2
+        margen_izq  = 60
+        espacio_bot = 150
+        
+        ancho_disponible = self.ancho_pantalla - margen_izq * 2
+        alto_disponible  = self.alto_pantalla - margen_top - espacio_bot
+        
+        # Tamaño de celda ligeramente menor para optimizar espacio
+        self.tam_celda = min(ancho_disponible // self.cols, alto_disponible // self.filas)
+        
+        self.grid_x = margen_izq + (ancho_disponible - self.tam_celda * self.cols) // 2
         self.grid_y = margen_top
-
+        
     def celda_en_pixel(self, fila, col):
-        x = self.grid_x + col * self.tam_celda
-        y = self.grid_y + fila * self.tam_celda
-        return x, y
-
+        return self.grid_x + col * self.tam_celda, self.grid_y + fila * self.tam_celda
+    
     def pixel_a_celda(self, px, py):
         col = (px - self.grid_x) // self.tam_celda
         fila = (py - self.grid_y) // self.tam_celda
         if 0 <= fila < self.filas and 0 <= col < self.cols:
-            return (fila, col)
+            return (int(fila), int(col))
         return None
+    
+    def mostrar_mensaje(self, texto, color, duracion=120):
+        self.efectos.mensaje_actual = texto
+        self.efectos.mensaje_color = color
+        self.efectos.mensaje_timer = duracion
 
-    # ── Dibujo ────────────────────────────────────────────────────────────────
+    def dibujar_fondo_gradiente(self):
+        for y in range(self.alto_pantalla):
+            factor = y / self.alto_pantalla
+            r = int(FONDOS_GRADIENTE[0][0] + factor * (FONDOS_GRADIENTE[1][0] - FONDOS_GRADIENTE[0][0]))
+            g = int(FONDOS_GRADIENTE[0][1] + factor * (FONDOS_GRADIENTE[1][1] - FONDOS_GRADIENTE[0][1]))
+            b = int(FONDOS_GRADIENTE[0][2] + factor * (FONDOS_GRADIENTE[1][2] - FONDOS_GRADIENTE[0][2]))
+            pygame.draw.line(self.pantalla, (r, g, b), (0, y), (self.ancho_pantalla, y))
+
     def dibujar(self):
-        self.pantalla.fill((245, 245, 250))
-        self._dibujar_titulo()
+        self.dibujar_fondo_gradiente()
+        self._dibujar_encabezado()
+        
+        # ── ORDEN DE CAPAS CORREGIDO ─────────────────────────────────────────
+        # 1. Primero la base de la grilla (Fondo blanco)
+        self._dibujar_grilla_base()
+        
+        # 2. Encima van los bloques del usuario o del solver
         self._dibujar_rects_usuario()
         self._dibujar_rect_en_curso()
-        self._dibujar_grilla()
+        
+        # 3. Encima las líneas divisorias y los números para que nunca se tapen
+        self._dibujar_grilla_lineas()
         self._dibujar_pistas()
+        
+        # 4. Menús y HUD estático
         self._dibujar_botones()
         self._dibujar_mensaje()
+        if self.resolviendo:
+            self._dibujar_spinner()
         pygame.display.flip()
+    
+    def _dibujar_encabezado(self):
+        txt_titulo = self.fuente_titulo.render("SHIKAKU PUZZLE", True, TEXTO_PRINCIPAL)
+        self.pantalla.blit(txt_titulo, (self.ancho_pantalla // 2 - txt_titulo.get_width() // 2, 15))
+        
+        txt_sub = self.fuente_sub.render(
+            "✨ Arrastra Click Izquierdo para crear  |  Click Derecho para borrar un bloque", True, TEXTO_SECUNDARIO
+        )
+        self.pantalla.blit(txt_sub, (self.ancho_pantalla // 2 - txt_sub.get_width() // 2, 55))
+        pygame.draw.line(self.pantalla, GRILLA_LINEA, (100, 85), (self.ancho_pantalla - 100, 85), 1)
 
-    def _dibujar_titulo(self):
-        txt = self.fuente_grande.render(f"Shikaku  –  {self.nombre}", True, NEGRO)
-        self.pantalla.blit(txt, (self.ancho_pantalla // 2 - txt.get_width() // 2, 12))
-        subtxt = self.fuente_chica.render(
-            "Clic izq: dibujar rectángulo  |  Clic der: borrar  |  Cada número = área del rectángulo",
-            True, GRIS)
-        self.pantalla.blit(subtxt, (self.ancho_pantalla // 2 - subtxt.get_width() // 2, 48))
+    def _dibujar_grilla_base(self):
+        t = self.tam_celda
+        gx, gy = self.celda_en_pixel(0, 0)
+        pygame.draw.rect(self.pantalla, GRILLA_FONDO, (gx, gy, t * self.cols, t * self.filas))
 
-    def _dibujar_rects_usuario(self):
-        for i, (r0, c0, r1, c1) in enumerate(self.rects_usuario):
-            color = COLORES_RECT[i % len(COLORES_RECT)]
-            x, y = self.celda_en_pixel(r0, c0)
-            w = (c1 - c0 + 1) * self.tam_celda
-            h = (r1 - r0 + 1) * self.tam_celda
-            pygame.draw.rect(self.pantalla, color, (x, y, w, h))
-            pygame.draw.rect(self.pantalla, AZUL, (x, y, w, h), 3)
-
-    def _dibujar_rect_en_curso(self):
-        if self.dibujando and self.celda_inicio and self.celda_actual:
-            r0 = min(self.celda_inicio[0], self.celda_actual[0])
-            c0 = min(self.celda_inicio[1], self.celda_actual[1])
-            r1 = max(self.celda_inicio[0], self.celda_actual[0])
-            c1 = max(self.celda_inicio[1], self.celda_actual[1])
-            x, y = self.celda_en_pixel(r0, c0)
-            w = (c1 - c0 + 1) * self.tam_celda
-            h = (r1 - r0 + 1) * self.tam_celda
-            s = pygame.Surface((w, h), pygame.SRCALPHA)
-            s.fill((100, 150, 255, 80))
-            self.pantalla.blit(s, (x, y))
-            pygame.draw.rect(self.pantalla, AZUL, (x, y, w, h), 2)
-
-    def _dibujar_grilla(self):
+    def _dibujar_grilla_lineas(self):
         t = self.tam_celda
         for f in range(self.filas):
             for c in range(self.cols):
                 x, y = self.celda_en_pixel(f, c)
-                pygame.draw.rect(self.pantalla, NEGRO, (x, y, t, t), 1)
-        # Borde exterior más grueso
+                pygame.draw.rect(self.pantalla, GRILLA_LINEA, (x, y, t, t), 1)
+        
         gx, gy = self.celda_en_pixel(0, 0)
-        pygame.draw.rect(self.pantalla, NEGRO,
-                         (gx, gy, t * self.cols, t * self.filas), 3)
+        pygame.draw.rect(self.pantalla, TEXTO_PRINCIPAL, (gx, gy, t * self.cols, t * self.filas), 3, border_radius=2)
+
+    def _dibujar_rects_usuario(self):
+        for i, (r0, c0, r1, c1) in enumerate(self.rects_usuario):
+            base_color = COLORES_RECT[i % len(COLORES_RECT)]
+            x, y = self.celda_en_pixel(r0, c0)
+            w = (c1 - c0 + 1) * self.tam_celda
+            h = (r1 - r0 + 1) * self.tam_celda
+            
+            surf_rect = pygame.Surface((w, h), pygame.SRCALPHA)
+            surf_rect.fill((*base_color, 200)) 
+            self.pantalla.blit(surf_rect, (x, y))
+            
+            borde_color = (int(base_color[0]*0.6), int(base_color[1]*0.6), int(base_color[2]*0.6))
+            if self.hover_rect == (r0, c0, r1, c1):
+                pygame.draw.rect(self.pantalla, TEXTO_PRINCIPAL, (x, y, w, h), 3)
+            else:
+                pygame.draw.rect(self.pantalla, borde_color, (x, y, w, h), 2)
+
+    def _dibujar_rect_en_curso(self):
+        if self.dibujando and self.celda_inicio and self.celda_actual:
+            r0, r1 = min(self.celda_inicio[0], self.celda_actual[0]), max(self.celda_inicio[0], self.celda_actual[0])
+            c0, c1 = min(self.celda_inicio[1], self.celda_actual[1]), max(self.celda_inicio[1], self.celda_actual[1])
+            x, y = self.celda_en_pixel(r0, c0)
+            w = (c1 - c0 + 1) * self.tam_celda
+            h = (r1 - r0 + 1) * self.tam_celda
+            
+            surf_previa = pygame.Surface((w, h), pygame.SRCALPHA)
+            surf_previa.fill((33, 150, 243, 120))
+            self.pantalla.blit(surf_previa, (x, y))
+            pygame.draw.rect(self.pantalla, (33, 150, 243), (x, y, w, h), 2)
 
     def _dibujar_pistas(self):
         t = self.tam_celda
         for (fila, col, num) in self.pistas:
             x, y = self.celda_en_pixel(fila, col)
-            # Círculo de fondo
             cx, cy = x + t // 2, y + t // 2
-            r = t // 2 - 3
-            pygame.draw.circle(self.pantalla, NEGRO, (cx, cy), r)
-            pygame.draw.circle(self.pantalla, BLANCO, (cx, cy), r - 2)
-            # Número
-            txt = self.fuente_media.render(str(num), True, NEGRO)
+            
+            pygame.draw.circle(self.pantalla, (245, 248, 250), (cx, cy), t // 2 - 6)
+            pygame.draw.circle(self.pantalla, TEXTO_SECUNDARIO, (cx, cy), t // 2 - 6, 1)
+            
+            txt = self.fuente_pistas.render(str(num), True, TEXTO_PRINCIPAL)
             self.pantalla.blit(txt, (cx - txt.get_width() // 2, cy - txt.get_height() // 2))
 
     def _dibujar_botones(self):
-        y_bot = self.grid_y + self.filas * self.tam_celda + 15
+        # Posición dinámica de botones pegada al final de la grilla
+        y_bot = self.grid_y + self.filas * self.tam_celda + 20
         self.botones = {}
-
+        
         botones_info = [
-            ("resolver",  "Resolver",    VERDE,  BLANCO),
-            ("limpiar",   "Limpiar",     NARANJA, BLANCO),
-            ("siguiente", "Siguiente ▶", AZUL,   BLANCO),
+            ("resolver",  "🔍 RESOLVER",   BTN_RESOLVER),
+            ("limpiar",   "🧹 LIMPIAR",    BTN_LIMPIAR),
+            ("siguiente", "➡️ SIGUIENTE",  BTN_SIGUIENTE),
         ]
-        total = len(botones_info)
-        bw, bh = 150, 42
+        
+        bw, bh = 160, 42
         espacio = 20
-        total_ancho = total * bw + (total - 1) * espacio
+        total_ancho = len(botones_info) * bw + (len(botones_info) - 1) * espacio
         x0 = self.ancho_pantalla // 2 - total_ancho // 2
-
-        for i, (key, label, color, txt_color) in enumerate(botones_info):
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        
+        un_hover_activo = False
+        for i, (key, label, paleta) in enumerate(botones_info):
             bx = x0 + i * (bw + espacio)
             rect = pygame.Rect(bx, y_bot, bw, bh)
             self.botones[key] = rect
-            pygame.draw.rect(self.pantalla, color, rect, border_radius=8)
-            pygame.draw.rect(self.pantalla, NEGRO, rect, 2, border_radius=8)
-            txt = self.fuente_media.render(label, True, txt_color)
-            self.pantalla.blit(txt, (bx + bw // 2 - txt.get_width() // 2,
-                                     y_bot + bh // 2 - txt.get_height() // 2))
+            
+            if rect.collidepoint(mouse_x, mouse_y):
+                color = paleta["hover"]
+                un_hover_activo = True
+            else:
+                color = paleta["normal"]
+            
+            pygame.draw.rect(self.pantalla, color, rect, border_radius=6)
+            txt = self.fuente_botones.render(label, True, paleta["texto"])
+            self.pantalla.blit(txt, (bx + bw // 2 - txt.get_width() // 2, y_bot + bh // 2 - txt.get_height() // 2))
+            
+        if un_hover_activo:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
+        else:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
 
     def _dibujar_mensaje(self):
-        if self.mensaje:
-            txt = self.fuente_media.render(self.mensaje, True, self.color_msg)
-            y_msg = self.grid_y + self.filas * self.tam_celda + 70
+        if self.efectos.mensaje_actual:
+            txt = self.fuente_botones.render(self.efectos.mensaje_actual, True, self.efectos.mensaje_color)
+            # Subido ligeramente para que nunca se esconda debajo de la barra de tareas
+            y_msg = self.alto_pantalla - 40 
+            
+            fondo_rect = pygame.Rect(self.ancho_pantalla // 2 - txt.get_width() // 2 - 15, y_msg - 5, txt.get_width() + 30, txt.get_height() + 10)
+            pygame.draw.rect(self.pantalla, (255, 255, 255), fondo_rect, border_radius=4)
+            pygame.draw.rect(self.pantalla, GRILLA_LINEA, fondo_rect, 1, border_radius=4)
+            
             self.pantalla.blit(txt, (self.ancho_pantalla // 2 - txt.get_width() // 2, y_msg))
 
-    # ── Lógica ────────────────────────────────────────────────────────────────
+    def _dibujar_spinner(self):
+        centro_x, centro_y = self.ancho_pantalla - 40, 30
+        radio = 10
+        for i in range(8):
+            angulo = self.efectos.spinner_angle + i * 45
+            x = int(centro_x + radio * math.cos(math.radians(angulo)))
+            y = int(centro_y + radio * math.sin(math.radians(angulo)))
+            alpha = max(30, 255 - i * 30)
+            s = pygame.Surface((5, 5), pygame.SRCALPHA)
+            pygame.draw.circle(s, (33, 150, 243, alpha), (2, 2), 2)
+            self.pantalla.blit(s, (x - 2, y - 2))
+
     def verificar_solucion(self):
-        """Verifica si los rectángulos del usuario resuelven el puzzle."""
-        ocupado = {}
-        for r0, c0, r1, c1 in self.rects_usuario:
-            for f in range(r0, r1 + 1):
-                for c in range(c0, c1 + 1):
-                    if (f, c) in ocupado:
-                        return False, "¡Rectángulos solapados!"
-                    ocupado[(f, c)] = (r0, c0, r1, c1)
-
-        # Toda la grilla cubierta
-        if len(ocupado) != self.filas * self.cols:
-            return False, "Faltan celdas por cubrir"
-
-        # Cada rectángulo tiene exactamente una pista con el número correcto
-        for r0, c0, r1, c1 in self.rects_usuario:
-            area = (r1 - r0 + 1) * (c1 - c0 + 1)
-            pistas_en = [(f, c, n) for (f, c, n) in self.pistas
-                         if r0 <= f <= r1 and c0 <= c <= c1]
-            if len(pistas_en) != 1:
-                return False, "Un rectángulo debe tener exactamente 1 número"
-            if pistas_en[0][2] != area:
-                return False, f"Área incorrecta: el {pistas_en[0][2]} necesita área {pistas_en[0][2]}"
-
-        return True, "¡Puzzle resuelto! 🎉"
+        try:
+            ocupado = {}
+            for r0, c0, r1, c1 in self.rects_usuario:
+                for f in range(r0, r1 + 1):
+                    for c in range(c0, c1 + 1):
+                        if (f, c) in ocupado: return False, "❌ ¡Hay rectángulos encimados!"
+                        ocupado[(f, c)] = (r0, c0, r1, c1)
+            
+            if len(ocupado) != self.filas * self.cols:
+                return False, f"💡 Quedan {self.filas * self.cols - len(ocupado)} celdas libres por cubrir"
+            
+            for r0, c0, r1, c1 in self.rects_usuario:
+                area = (r1 - r0 + 1) * (c1 - c0 + 1)
+                pistas_en = [(f, c, n) for (f, c, n) in self.pistas if r0 <= f <= r1 and c0 <= c <= c1]
+                if len(pistas_en) != 1: return False, "❌ ¡Cada bloque debe encerrar exactamente un número!"
+                if pistas_en[0][2] != area: return False, f"❌ Área errónea: se requiere tamaño {pistas_en[0][2]}"
+            
+            return True, "🎉 ¡Excelente! ¡Puzzle completado con éxito! 🎉"
+        except Exception as e:
+            return False, "Error de verificación"
 
     def agregar_rect(self, r0, c0, r1, c1):
-        """Agrega un rectángulo del usuario, eliminando los que se solapan."""
+        if r0 > r1 or c0 > c1: return
+        tiene_pista = any(r0 <= f <= r1 and c0 <= c <= c1 for (f, c, _) in self.pistas)
+        if not tiene_pista:
+            self.mostrar_mensaje("⚠️ El bloque debe encerrar al menos un número", BTN_LIMPIAR["normal"], 100)
+            return
+        
         nuevos = []
         for rect in self.rects_usuario:
-            # Verificar solapamiento
             solapado = not (rect[2] < r0 or rect[0] > r1 or rect[3] < c0 or rect[1] > c1)
-            if not solapado:
-                nuevos.append(rect)
+            if not solapado: nuevos.append(rect)
         nuevos.append((r0, c0, r1, c1))
         self.rects_usuario = nuevos
+        
+        ok, msg = self.verificar_solucion()
+        self.mostrar_mensaje(msg, BTN_RESOLVER["normal"] if ok else TEXTO_SECUNDARIO, 140)
 
     def borrar_rect_en(self, fila, col):
-        self.rects_usuario = [
-            r for r in self.rects_usuario
-            if not (r[0] <= fila <= r[2] and r[1] <= col <= r[3])
-        ]
+        antes = len(self.rects_usuario)
+        self.rects_usuario = [r for r in self.rects_usuario if not (r[0] <= fila <= r[2] and r[1] <= col <= r[3])]
+        if len(self.rects_usuario) < antes:
+            self.mostrar_mensaje("🗑️ Bloque removido", TEXTO_SECUNDARIO, 60)
+            ok, msg = self.verificar_solucion()
+            self.mostrar_mensaje(msg, TEXTO_SECUNDARIO, 100)
 
-    # ── Eventos ───────────────────────────────────────────────────────────────
     def manejar_eventos(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-
-            elif event.type == pygame.MOUSEBUTTONDOWN:
+            
+            elif event.type == pygame.MOUSEMOTION:
                 mx, my = event.pos
-
-                # Botones
-                if hasattr(self, 'botones'):
-                    if self.botones.get("resolver") and self.botones["resolver"].collidepoint(mx, my):
-                        self._accion_resolver()
-                        continue
-                    if self.botones.get("limpiar") and self.botones["limpiar"].collidepoint(mx, my):
-                        self.rects_usuario = []
-                        self.mensaje = "Grilla limpiada"
-                        self.color_msg = GRIS
-                        continue
-                    if self.botones.get("siguiente") and self.botones["siguiente"].collidepoint(mx, my):
-                        self.puzzle_idx = (self.puzzle_idx + 1) % len(PUZZLES)
-                        self.cargar_puzzle(self.puzzle_idx)
-                        self.mensaje = f"Cargado: {self.nombre}"
-                        self.color_msg = AZUL
-                        continue
-
-                # Clic en grilla
                 celda = self.pixel_a_celda(mx, my)
                 if celda:
-                    if event.button == 1:   # izquierdo → dibujar
+                    self.celda_actual = celda
+                    for rect in self.rects_usuario:
+                        if rect[0] <= celda[0] <= rect[2] and rect[1] <= celda[1] <= rect[3]:
+                            self.hover_rect = rect
+                            break
+                    else: self.hover_rect = None
+                else: self.hover_rect = None
+            
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mx, my = event.pos
+                if hasattr(self, 'botones'):
+                    if self.botones["resolver"].collidepoint(mx, my):
+                        self._accion_resolver(); continue
+                    if self.botones["limpiar"].collidepoint(mx, my):
+                        self.rects_usuario = []
+                        self.mostrar_mensaje("🧹 Tablero limpio", BTN_LIMPIAR["normal"], 90); continue
+                    if self.botones["siguiente"].collidepoint(mx, my):
+                        self.puzzle_idx = (self.puzzle_idx + 1) % len(PUZZLES)
+                        self.cargar_puzzle(self.puzzle_idx); continue
+                
+                celda = self.pixel_a_celda(mx, my)
+                if celda:
+                    if event.button == 1:
                         self.dibujando = True
                         self.celda_inicio = celda
                         self.celda_actual = celda
-                    elif event.button == 3: # derecho → borrar
+                    elif event.button == 3:
                         self.borrar_rect_en(*celda)
-                        self.mensaje = ""
-
-            elif event.type == pygame.MOUSEMOTION:
-                if self.dibujando:
-                    celda = self.pixel_a_celda(*event.pos)
-                    if celda:
-                        self.celda_actual = celda
-
+            
             elif event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1 and self.dibujando:
                     self.dibujando = False
                     if self.celda_inicio and self.celda_actual:
-                        r0 = min(self.celda_inicio[0], self.celda_actual[0])
-                        c0 = min(self.celda_inicio[1], self.celda_actual[1])
-                        r1 = max(self.celda_inicio[0], self.celda_actual[0])
-                        c1 = max(self.celda_inicio[1], self.celda_actual[1])
+                        r0, r1 = min(self.celda_inicio[0], self.celda_actual[0]), max(self.celda_inicio[0], self.celda_actual[0])
+                        c0, c1 = min(self.celda_inicio[1], self.celda_actual[1]), max(self.celda_inicio[1], self.celda_actual[1])
                         self.agregar_rect(r0, c0, r1, c1)
-                        ok, msg = self.verificar_solucion()
-                        self.mensaje = msg
-                        self.color_msg = VERDE if ok else GRIS
-                    self.celda_inicio = None
-                    self.celda_actual = None
+                    self.celda_inicio, self.celda_actual = None, None
 
     def _accion_resolver(self):
-        self.mensaje = "Resolviendo..."
-        self.color_msg = AZUL
+        if self.resolviendo: return
+        self.resolviendo = True
+        self.mostrar_mensaje("🤖 El Algoritmo está calculando la solución...", BTN_SIGUIENTE["normal"], 0)
         self.dibujar()
-        solucion = resolver(self.pistas, self.filas, self.cols)
-        if solucion:
-            self.rects_usuario = solucion
-            self.mensaje = "¡Solución encontrada por el algoritmo! 🤖"
-            self.color_msg = VERDE
-        else:
-            self.mensaje = "No se encontró solución"
-            self.color_msg = ROJO
+        
+        try:
+            solucion = resolver(self.pistas, self.filas, self.cols)
+            if solucion:
+                self.rects_usuario = solucion
+                self.mostrar_mensaje("✅ ¡Solución perfecta encontrada por Backtracking! 🤖", BTN_RESOLVER["normal"], 200)
+            else:
+                self.mostrar_mensaje("❌ Este mapa no posee solución válida", BTN_LIMPIAR["normal"], 180)
+        except Exception as e:
+            self.mostrar_mensaje("Error en el motor lógico", BTN_LIMPIAR["normal"], 180)
+        finally:
+            self.resolviendo = False
 
-    # ── Loop principal ────────────────────────────────────────────────────────
     def ejecutar(self):
         clock = pygame.time.Clock()
         while True:
             self.manejar_eventos()
+            self.efectos.actualizar()
             self.dibujar()
             clock.tick(60)
-
 
 if __name__ == "__main__":
     juego = Shikaku()
