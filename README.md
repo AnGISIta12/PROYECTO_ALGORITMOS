@@ -26,8 +26,10 @@ Ejemplo: Un número 6 podría ser un rectángulo de 2×3 o 3×2.
 ##  Características
 
 ✅ **Interfaz gráfica intuitiva** con Pygame  
-✅ **3 puzzles predefinidos** (fácil 5×5, medio 6×6, difícil 7×7)  
-✅ **Solucionador automático** usando algoritmo de backtracking  
+✅ **4 puzzles predefinidos** (fácil 5×5, medio 6×6, difícil 7×7, maestro 8×8)  
+✅ **Generador aleatorio** de tableros 6×6 y 8×8  
+✅ **Modo Humano o Sintético** con resolución instantánea o animada  
+✅ **Solucionador automático** modular en `solver.py` usando backtracking  
 ✅ **Validación en tiempo real** de las soluciones  
 ✅ **Colores distintivos** para cada rectángulo dibujado  
 ✅ **Mensajes de feedback** sobre el estado del puzzle  
@@ -58,19 +60,22 @@ Ejemplo: Un número 6 podría ser un rectángulo de 2×3 o 3×2.
 
 ## 🧠 Algoritmo de Resolución
 
-El solucionador implementa **backtracking** para encontrar la solución:
+El solucionador implementa **backtracking** en el nuevo módulo `solver.py` y trabaja junto con la interfaz de `shikaku.py`:
 
-1. Para cada número (pista) en la grilla, calcula todos los rectángulos posibles con esa área
+1. Para cada número (pista) en la grilla, calcula todos los rectángulos posibles que cubran esa celda con el área correcta
 2. Intenta asignar rectángulos de forma recursiva sin solapamientos
 3. Verifica que cada rectángulo contenga exactamente una pista
 4. Si encuentra una contradicción, retrocede (backtrack) y prueba otra opción
 5. Retorna la solución completa cuando todas las celdas están cubiertas correctamente
 
+> El módulo `solver.py` ahora separa la lógica de búsqueda de la interfaz gráfica, lo que facilita el mantenimiento y permite animar el proceso de backtracking desde `shikaku.py`.
+
 ## 📁 Estructura del Proyecto
 
 ```
 shikaku-game/
-├── shikaku.py      # Archivo principal del juego
+├── shikaku.py      # Archivo principal del juego y la interfaz gráfica
+├── solver.py       # Lógica del solucionador/backtracking separada del UI
 ├── README.md       # Este archivo
 └── .gitignore      # (Opcional) Archivos ignorados por Git
 ```
