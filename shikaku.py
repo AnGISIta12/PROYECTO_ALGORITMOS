@@ -1,5 +1,6 @@
 """
-Shikaku - Interfaz Gráfica de Usuario (Estructura Avanzada - Paleta Clara Premium)
+Shikaku
+Vanesa Florez y Angy Bautista
 Proyecto Análisis de Algoritmos 2026-10
 Pontificia Universidad Javeriana
 """
@@ -10,7 +11,7 @@ import math
 import random
 from solver import resolver, obtener_rectangulos_posibles, celdas_de_rect
 
-# ── PALETA DE COLORES CLARA PREMIUM (RESTAURADA) ──────────────────────────────
+# ── PALETA DE COLORES Y ESTILOS DE DISEÑO ───────────────────────────────────────────────
 FONDOS_GRADIENTE = [(240, 244, 248), (218, 226, 236)] # Degradado suave de fondo
 COLOR_PANEL      = (255, 255, 255)      # Panel lateral blanco limpio
 COLOR_GRID_BG    = (255, 255, 255)      # Fondo de la grilla blanco
@@ -26,7 +27,7 @@ COLOR_SUCCESS_H  = (46, 175, 76)        # Hover verde
 COLOR_DANGER     = (211, 47, 47)        # Rojo (Limpiar)
 COLOR_DANGER_H   = (229, 57, 53)        # Hover rojo
 
-# Colores Pastel para los Bloques (Restaurados)
+# Colores Pastel para los Bloques dibujados por el usuario
 COLORES_PASTEL = [
     (139, 218, 242),   # Celeste pastel
     (163, 230, 177),   # Verde menta pastel
@@ -75,43 +76,43 @@ class ShikakuClaroPro:
         
     def cargar_puzzle(self, idx):
         p = PUZZLES[idx]
-        self.filas = p["filas"]
-        self.cols  = p["cols"]
-        self.pistas = p["pistas"]
-        self.nombre_puzzle = p["nombre"]
+        self.filas = p["filas"] # Número de filas en el tablero
+        self.cols  = p["cols"] # Número de columnas en el tablero
+        self.pistas = p["pistas"] # Lista de pistas en formato (fila, columna, número)
+        self.nombre_puzzle = p["nombre"] # Nombre del puzzle
         self.rects_usuario = []
         self._calcular_geometria_grilla()
         
     def generar_aleatorio(self, dim):
         self.mensaje = "Generando mapa dinámico..."
         intentos = 0
-        while intentos < 50:
+        while intentos < 50: # Limitar intentos para evitar loops infinitos
             pistas_test = []
             num_pistas = dim + 2
             celdas_usadas = set()
             for _ in range(num_pistas):
-                f, c = random.randint(0, dim-1), random.randint(0, dim-1)
+                f, c = random.randint(0, dim-1), random.randint(0, dim-1) # Coordenadas aleatorias para la pista
                 if (f, c) not in celdas_usadas:
                     pistas_test.append((f, c, random.choice([2, 3, 4, 6])))
-                    celdas_usadas.add((f, c))
+                    celdas_usadas.add((f, c)) # Evitar pistas duplicadas en la misma celda
             
-            sol = resolver(pistas_test, dim, dim)
+            sol = resolver(pistas_test, dim, dim) # Intentar resolver el mapa generado para verificar su validez
             if sol:
                 nuevas_pistas = []
                 for idx, r in enumerate(sol):
-                    area = (r[2]-r[0]+1) * (r[3]-r[1]+1)
-                    nuevas_pistas.append((r[0], r[1], area))
+                    area = (r[2]-r[0]+1) * (r[3]-r[1]+1) # Calcular el área del rectángulo para asignar el número correcto a la pista
+                    nuevas_pistas.append((r[0], r[1], area)) # Asignar la pista a la esquina superior izquierda del rectángulo
                 
                 self.filas = dim
                 self.cols = dim
                 self.pistas = nuevas_pistas
-                self.nombre_puzzle = f"Aleatorio {dim}×{dim}"
+                self.nombre_puzzle = f"Aleatorio {dim}×{dim}" # Nombre dinámico para el puzzle generado
                 self.rects_usuario = []
                 self._calcular_geometria_grilla()
                 self.mensaje = "✨ Nuevo mapa generado"
                 return
             intentos += 1
-        self.mensaje = "❌ Intente de nuevo el mapa aleatorio"
+        self.mensaje = "❌ Intente de nuevo el mapa aleatorio" 
 
     def _calcular_geometria_grilla(self):
         area_juego_x = 280
@@ -123,7 +124,7 @@ class ShikakuClaroPro:
         self.grid_y = 50 + (alto_disp - self.tam_celda * self.filas) // 2
 
     def pixel_a_celda(self, px, py):
-        col = (px - self.grid_x) // self.tam_celda
+        col = (px - self.grid_x) // self.tam_celda ## Cálculo correcto de columna basado en la posición del mouse y la geometría de la grilla
         fila = (py - self.grid_y) // self.tam_celda
         if 0 <= fila < self.filas and 0 <= col < self.cols:
             return (int(fila), int(col))
@@ -160,7 +161,7 @@ class ShikakuClaroPro:
             borde_color = (int(base_color[0]*0.6), int(base_color[1]*0.6), int(base_color[2]*0.6))
             borde_w = 3 if self.hover_rect == (r0, c0, r1, c1) else 1
             
-            # Línea arreglada correctamente con self.hover_rect
+            # Línea arreglada correctamente con self.hover_rect para resaltar el bloque bajo el mouse
             pygame.draw.rect(self.pantalla, TEXTO_PRINCIPAL if self.hover_rect == (r0, c0, r1, c1) else borde_color, (x, y, w, h), borde_w)
             
         # Dibujar previsualización dinámica de arrastre
