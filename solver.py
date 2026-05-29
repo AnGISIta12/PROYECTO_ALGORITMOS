@@ -1,5 +1,6 @@
 """
 Shikaku - Solucionador Sintético (Backtracking)
+Vanesa Florez y Angy Bautista
 Proyecto Análisis de Algoritmos 2026-10
 Pontificia Universidad Javeriana
 """
